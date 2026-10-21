@@ -1,0 +1,10 @@
+.gradle/
+**/build/
+**/DerivedData/
+**/*.xcodeproj/
+dist/
+.signing/
+node_modules/
+local.properties
+*.xcresult/
+.DS_Store

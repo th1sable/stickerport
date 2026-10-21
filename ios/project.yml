@@ -1,0 +1,42 @@
+name: StickerPort
+options:
+  deploymentTarget:
+    iOS: '16.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    TARGETED_DEVICE_FAMILY: '1'
+targets:
+  StickerPort:
+    type: application
+    platform: iOS
+    sources:
+      - path: StickerPort
+        excludes: ['Info.plist']
+      - path: ../web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.stickerport.mobile
+        INFOPLIST_FILE: StickerPort/Info.plist
+        MARKETING_VERSION: '0.1.0'
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  StickerPortTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [StickerPortTests]
+    dependencies:
+      - target: StickerPort
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  StickerPort:
+    build:
+      targets:
+        StickerPort: all
+        StickerPortTests: [test]
+    test:
+      targets: [StickerPortTests]

@@ -1,0 +1,72 @@
+name: Build and verify StickerPort
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          accept-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - run: gradle -p android --no-daemon assembleRelease
+      - run: sudo setfacl -m u:"$(id -un)":rw /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: gradle -p android --no-daemon connectedDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: StickerPort-Android
+          path: |
+            android/app/build/outputs/apk/release/*unsigned.apk
+            android/app/build/reports/androidTests/
+            android/app/build/outputs/androidTest-results/
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: python3 scripts/create_icon.py
+      - run: xcodegen generate --spec ios/project.yml --project ios
+      - run: >-
+          xcodebuild -project ios/StickerPort.xcodeproj -scheme StickerPort
+          -configuration Release -sdk iphoneos -destination 'generic/platform=iOS'
+          -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO build
+      - run: python3 scripts/test_ios_simulator.py
+      - run: python3 scripts/package_ipa.py ios/DerivedData/Build/Products/Release-iphoneos/StickerPort.app dist/StickerPort-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: StickerPort-iPhone
+          path: |
+            dist/StickerPort-unsigned.ipa
+            ios/TestResults.xcresult
