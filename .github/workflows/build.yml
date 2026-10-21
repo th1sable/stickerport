@@ -33,6 +33,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - run: python3 scripts/build_web.py
       - run: gradle -p android --no-daemon assembleRelease
       - run: sudo setfacl -m u:"$(id -un)":rw /dev/kvm
       - uses: reactivecircus/android-emulator-runner@v2
@@ -58,6 +59,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: brew install xcodegen
       - run: python3 scripts/create_icon.py
+      - run: python3 scripts/build_web.py
       - run: xcodegen generate --spec ios/project.yml --project ios
       - run: >-
           xcodebuild -project ios/StickerPort.xcodeproj -scheme StickerPort

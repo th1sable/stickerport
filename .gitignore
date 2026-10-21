@@ -8,3 +8,4 @@ node_modules/
 local.properties
 *.xcresult/
 .DS_Store
+web/bundle.js

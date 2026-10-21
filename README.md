@@ -29,6 +29,8 @@ Nessun server StickerPort, pubblicità o telemetria. Il browser integrato comuni
 
 `npm test` verifica parser WebP, padding, vincoli pacchetti, raccolta DOM e validazione URL. Non richiede dipendenze npm.
 
+Prima della compilazione: `python3 scripts/build_web.py` genera lo script locale condiviso compatibile con entrambi i WebView.
+
 Android: JDK 17, Gradle 8.9, SDK 35, `gradle -p android assembleRelease`. `connectedDebugAndroidTest` verifica WebView/bridge, storage, provider WhatsApp e policy URL su emulatore.
 
 iPhone: macOS con Xcode e XcodeGen, `python3 scripts/create_icon.py`, `xcodegen generate --spec ios/project.yml --project ios`, poi aprire il progetto generato. `scripts/test_ios_simulator.py` verifica l'interfaccia WKWebView, storage e payload WhatsApp. `scripts/package_ipa.py` confeziona esclusivamente una vera build iPhoneOS.
