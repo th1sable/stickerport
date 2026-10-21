@@ -18,7 +18,7 @@ final class Store {
  static void save(Context c,JSONObject library)throws Exception{library.getJSONArray("packs");byte[] bytes=library.toString().getBytes(StandardCharsets.UTF_8);if(bytes.length>100*1024*1024)throw new IOException("Raccolta troppo grande. Elimina alcuni pacchetti.");atomic(new File(c.getFilesDir(),"library.json"),bytes);}
  static JSONObject export(Context c,JSONObject pack,String tray)throws Exception{
   JSONArray stickers=pack.getJSONArray("stickers");String name=pack.getString("name");boolean animated=pack.getBoolean("animated");
-  if(stickers.length()<3||stickers.length()>30||name.isBlank()||name.length()>64)throw new IOException("Pacchetto non valido.");
+  if(stickers.length()<3||stickers.length()>30||name.trim().isEmpty()||name.length()>64)throw new IOException("Pacchetto non valido.");
   String id="sp-"+UUID.randomUUID();File dir=new File(root(c),id);if(!dir.mkdirs())throw new IOException("Impossibile creare il pacchetto.");
   byte[] icon=Base64.decode(tray,Base64.DEFAULT);Bitmap iconBitmap=BitmapFactory.decodeByteArray(icon,0,icon.length);
   if(icon.length>50*1024||iconBitmap==null||iconBitmap.getWidth()!=96||iconBitmap.getHeight()!=96)throw new IOException("Icona non valida.");
@@ -33,5 +33,5 @@ final class Store {
   JSONObject metadata=new JSONObject().put("id",id).put("name",name).put("animated",animated).put("files",names);
   atomic(new File(dir,"pack.json"),metadata.toString().getBytes(StandardCharsets.UTF_8));return metadata;
  }
- static JSONObject metadata(Context c,String id)throws Exception{if(!id.matches("sp-[a-f0-9-]{36}"))throw new IOException("Identificatore non valido");return new JSONObject(Files.readString(new File(new File(root(c),id),"pack.json").toPath()));}
+ static JSONObject metadata(Context c,String id)throws Exception{if(!id.matches("sp-[a-f0-9-]{36}"))throw new IOException("Identificatore non valido");return new JSONObject(new String(Files.readAllBytes(new File(new File(root(c),id),"pack.json").toPath()),StandardCharsets.UTF_8));}
 }

@@ -6,10 +6,16 @@ settings:
   base:
     SWIFT_VERSION: '5.0'
     TARGETED_DEVICE_FAMILY: '1'
+packages:
+  SDWebImageWebPCoder:
+    url: https://github.com/SDWebImage/SDWebImageWebPCoder.git
+    exactVersion: 0.15.0
 targets:
   StickerPort:
     type: application
     platform: iOS
+    dependencies:
+      - package: SDWebImageWebPCoder
     sources:
       - path: StickerPort
         excludes: ['Info.plist']

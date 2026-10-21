@@ -23,6 +23,8 @@ final class AppTests: XCTestCase {
   let sticker: [String: Any] = ["animated": false, "data": image]; let p: [String: Any] = ["name": "Reazioni", "animated": false, "stickers": [sticker,sticker,sticker]]
   let data = try Storage.packPayload(p, tray: tray); let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
   XCTAssertEqual(json["publisher"] as? String, "StickerPort"); XCTAssertEqual((json["stickers"] as? [Any])?.count, 3); XCTAssertNotNil(json["tray_image"])
+  let first = (json["stickers"] as! [[String: Any]])[0]; let bytes = Data(base64Encoded: first["image_data"] as! String)!
+  XCTAssertEqual(String(data: bytes.prefix(4), encoding: .ascii), "RIFF"); XCTAssertEqual(String(data: bytes[8..<12], encoding: .ascii), "WEBP")
   XCTAssertThrowsError(try Storage.packPayload(["name": "Reazioni", "animated": false, "stickers": [sticker]], tray: tray))
  }
 }

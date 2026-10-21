@@ -1,6 +1,7 @@
 import UIKit
 import WebKit
 import ImageIO
+import SDWebImageWebPCoder
 
 @main final class AppDelegate: UIResponder, UIApplicationDelegate {
  var window: UIWindow?
@@ -15,6 +16,9 @@ enum AppError: LocalizedError {
 }
 
 enum Storage {
+ static func encodeWebP(_ data: Data) throws -> Data {
+  guard let image = UIImage(data: data), image.size == CGSize(width: 512, height: 512), let result = SDImageWebPCoder.shared.encodedData(with: image, format: .webP, options: [.encodeMaxFileSize: 100 * 1024, .encodeCompressionQuality: 0.85]), result.count <= 100 * 1024 else { throw AppError.message("Immagine troppo complessa per il limite di WhatsApp.") }; return result
+ }
  static var directory: URL { FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("StickerPort") }
  static var file: URL { directory.appendingPathComponent("library.json") }
  static func load() throws -> [String: Any] {
@@ -35,9 +39,13 @@ enum Storage {
         let icon = Data(base64Encoded: tray), icon.count <= 50 * 1024, let image = UIImage(data: icon), image.size == CGSize(width: 96, height: 96) else { throw AppError.message("Pacchetto non valido.") }
   var items = [[String: Any]]()
   for s in stickers {
-   guard let isAnimated = s["animated"] as? Bool, isAnimated == animated, let encoded = s["data"] as? String, let data = Data(base64Encoded: encoded), !data.isEmpty, data.count <= (animated ? 500 : 100) * 1024 else { throw AppError.message("Sticker non compatibile.") }
+   guard let isAnimated = s["animated"] as? Bool, isAnimated == animated, let encoded = s["data"] as? String, let original = Data(base64Encoded: encoded), !original.isEmpty else { throw AppError.message("Sticker non compatibile.") }
+   let isWebP = original.count >= 12 && String(data: original.prefix(4), encoding: .ascii) == "RIFF" && String(data: original[8..<12], encoding: .ascii) == "WEBP"
+   guard !animated || isWebP else { throw AppError.message("L’animazione deve essere WebP.") }
+   let data = isWebP ? original : try encodeWebP(original)
+   guard data.count <= (animated ? 500 : 100) * 1024 else { throw AppError.message("Sticker troppo grande.") }
    guard let source = CGImageSourceCreateWithData(data as CFData, nil), let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any], properties[kCGImagePropertyPixelWidth] as? Int == 512, properties[kCGImagePropertyPixelHeight] as? Int == 512 else { throw AppError.message("Lo sticker deve misurare 512 × 512 pixel.") }
-   items.append(["image_data": encoded, "emojis": [], "accessibility_text": "Sticker"])
+   items.append(["image_data": data.base64EncodedString(), "emojis": [], "accessibility_text": "Sticker"])
   }
   return try JSONSerialization.data(withJSONObject: ["identifier": "sp-" + UUID().uuidString, "name": name, "publisher": "StickerPort", "tray_image": tray, "animated_sticker_pack": animated, "stickers": items])
  }
@@ -79,6 +87,7 @@ final class MainController: UIViewController, WKScriptMessageHandler, WKNavigati
   do { switch action {
    case "load": reply(id, result: try Storage.load())
    case "save": guard let library = data["library"] as? [String: Any] else { throw AppError.message("Raccolta non valida.") }; try Storage.save(library); reply(id, result: true)
+   case "encode": guard let encoded = data["data"] as? String, let bytes = Data(base64Encoded: encoded), bytes.count <= 8 * 1024 * 1024 else { throw AppError.message("Immagine non valida.") }; reply(id, result: try Storage.encodeWebP(bytes).base64EncodedString())
    case "download": guard let text = data["url"] as? String, let url = URL(string: text) else { throw AppError.message("Link non valido.") }; let download = MediaDownload(); downloads[id] = download; download.start(url) { result in DispatchQueue.main.async { self.downloads.removeValue(forKey: id); switch result { case .success(let bytes): self.reply(id, result: bytes.base64EncodedString()); case .failure: self.reply(id, error: "Sticker non disponibile. Riapri TikTok e raccoglilo di nuovo.") } } }
    case "browse": guard let text = data["url"] as? String, let url = URL(string: text), BrowserController.tiktok(url), let scanner = data["scanner"] as? String else { throw AppError.message("Link TikTok non valido.") }
     let browser = BrowserController(url: url, scanner: scanner); browser.onCollect = { items in guard let jsonData = try? JSONSerialization.data(withJSONObject: items), let json = String(data: jsonData, encoding: .utf8) else { return }; self.home.evaluateJavaScript("window.stickerCandidates(\(json))", completionHandler: nil) }; let navigation = UINavigationController(rootViewController: browser); navigation.modalPresentationStyle = .fullScreen; present(navigation, animated: true); reply(id, result: true)

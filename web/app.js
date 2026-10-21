@@ -1,5 +1,7 @@
 import {inspectWebP,padAnimatedWebP,allowedMediaURL,validTikTokURL,validatePack,scanner} from './core.js';
+import licenses from './licenses.js';
 const $=id=>document.getElementById(id), pending=new Map();let sequence=0,library={packs:[]},selected=null,busy=false;
+$('licenses').textContent=licenses;
 const platform=window.StickerNative?'android':window.webkit?.messageHandlers?.native?'ios':'preview';
 window.nativeReply=(id,result,error)=>{const p=pending.get(id);if(p){pending.delete(id);clearTimeout(p.timer);error?p.reject(Error(error)):p.resolve(result);}};
 function native(action,data={}){return new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject,timer:setTimeout(()=>{pending.delete(id);reject(Error('Operazione scaduta. Riprova.'));},60000)});const body={id,action,data};if(platform==='android')window.StickerNative.post(JSON.stringify(body));else if(platform==='ios')window.webkit.messageHandlers.native.postMessage(body);else{pending.delete(id);reject(Error('Questa funzione richiede l’app installata.'));}});}
@@ -19,7 +21,15 @@ function render(){
 }
 async function makePack(){const name=await ask('Nuovo pacchetto','Scegli un nome per la tua raccolta.','Le mie reazioni');if(!name)return null;const p={id:crypto.randomUUID(),name,animated:null,stickers:[]};library.packs.push(p);try{await save();}catch(e){library.packs.pop();throw e;}selected=p.id;render();return p;}
 async function raster(bytes,mime,size,output){
- const image=new Image(),url=URL.createObjectURL(new Blob([bytes],{type:mime}));try{image.src=url;await image.decode();if(image.naturalWidth>8192||image.naturalHeight>8192)throw Error('Immagine troppo grande.');const c=document.createElement('canvas');c.width=c.height=size;const ctx=c.getContext('2d'),scale=Math.min(size/image.naturalWidth,size/image.naturalHeight);ctx.drawImage(image,(size-image.naturalWidth*scale)/2,(size-image.naturalHeight*scale)/2,image.naturalWidth*scale,image.naturalHeight*scale);let data;for(const q of [.9,.75,.55,.35]){data=c.toDataURL(output,q);if(from64(data.split(',')[1]).length<=(size===96?50:100)*1024)break;}const result=from64(data.split(',')[1]);if(result.length>(size===96?50:100)*1024)throw Error('Immagine troppo complessa per il limite di WhatsApp. Scegli uno sticker più semplice.');return {data:b64(result),mime:data.slice(5,data.indexOf(';'))};}finally{URL.revokeObjectURL(url);}
+ const image=new Image(),url=URL.createObjectURL(new Blob([bytes],{type:mime}));try{
+  image.src=url;await image.decode();if(image.naturalWidth>8192||image.naturalHeight>8192)throw Error('Immagine troppo grande.');
+  const c=document.createElement('canvas');c.width=c.height=size;const ctx=c.getContext('2d'),scale=Math.min(size/image.naturalWidth,size/image.naturalHeight);
+  ctx.drawImage(image,(size-image.naturalWidth*scale)/2,(size-image.naturalHeight*scale)/2,image.naturalWidth*scale,image.naturalHeight*scale);
+  if(platform==='ios'&&size===512)return {data:await native('encode',{data:c.toDataURL('image/png').split(',')[1]}),mime:'image/webp'};
+  let data;for(const q of [.9,.75,.55,.35]){data=c.toDataURL(output,q);if(from64(data.split(',')[1]).length<=(size===96?50:100)*1024)break;}
+  const result=from64(data.split(',')[1]);if(result.length>(size===96?50:100)*1024)throw Error('Immagine troppo complessa per il limite di WhatsApp. Scegli uno sticker più semplice.');
+  return {data:b64(result),mime:data.slice(5,data.indexOf(';'))};
+ }finally{URL.revokeObjectURL(url);}
 }
 async function importBytes(bytes){
  if(bytes.length>8*1024*1024)throw Error('Il file supera 8 MB.');
