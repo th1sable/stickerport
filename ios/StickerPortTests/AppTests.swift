@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 import WebKit
 @testable import StickerPort
 
@@ -16,8 +17,10 @@ final class AppTests: XCTestCase {
   XCTAssertTrue(loaded, "Shared UI module and native storage must load in WKWebView")
  }
  func testPackProtocolAndMinimumCount() throws {
-  let renderer = UIGraphicsImageRenderer(size: CGSize(width: 96, height: 96)); let tray = renderer.pngData { context in UIColor.green.setFill(); context.fill(CGRect(x: 0, y: 0, width: 96, height: 96)) }.base64EncodedString()
-  let sticker: [String: Any] = ["animated": false, "data": tray]; let p: [String: Any] = ["name": "Reazioni", "animated": false, "stickers": [sticker,sticker,sticker]]
+  let format = UIGraphicsImageRendererFormat(); format.scale = 1
+  let renderer = UIGraphicsImageRenderer(size: CGSize(width: 96, height: 96), format: format); let tray = renderer.pngData { context in UIColor.green.setFill(); context.fill(CGRect(x: 0, y: 0, width: 96, height: 96)) }.base64EncodedString()
+  let image = UIGraphicsImageRenderer(size: CGSize(width: 512, height: 512), format: format).pngData { context in UIColor.green.setFill(); context.fill(CGRect(x: 0, y: 0, width: 512, height: 512)) }.base64EncodedString()
+  let sticker: [String: Any] = ["animated": false, "data": image]; let p: [String: Any] = ["name": "Reazioni", "animated": false, "stickers": [sticker,sticker,sticker]]
   let data = try Storage.packPayload(p, tray: tray); let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
   XCTAssertEqual(json["publisher"] as? String, "StickerPort"); XCTAssertEqual((json["stickers"] as? [Any])?.count, 3); XCTAssertNotNil(json["tray_image"])
   XCTAssertThrowsError(try Storage.packPayload(["name": "Reazioni", "animated": false, "stickers": [sticker]], tray: tray))

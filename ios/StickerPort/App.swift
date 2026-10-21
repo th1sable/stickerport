@@ -1,5 +1,6 @@
 import UIKit
 import WebKit
+import ImageIO
 
 @main final class AppDelegate: UIResponder, UIApplicationDelegate {
  var window: UIWindow?
@@ -35,6 +36,7 @@ enum Storage {
   var items = [[String: Any]]()
   for s in stickers {
    guard let isAnimated = s["animated"] as? Bool, isAnimated == animated, let encoded = s["data"] as? String, let data = Data(base64Encoded: encoded), !data.isEmpty, data.count <= (animated ? 500 : 100) * 1024 else { throw AppError.message("Sticker non compatibile.") }
+   guard let source = CGImageSourceCreateWithData(data as CFData, nil), let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any], properties[kCGImagePropertyPixelWidth] as? Int == 512, properties[kCGImagePropertyPixelHeight] as? Int == 512 else { throw AppError.message("Lo sticker deve misurare 512 × 512 pixel.") }
    items.append(["image_data": encoded, "emojis": [], "accessibility_text": "Sticker"])
   }
   return try JSONSerialization.data(withJSONObject: ["identifier": "sp-" + UUID().uuidString, "name": name, "publisher": "StickerPort", "tray_image": tray, "animated_sticker_pack": animated, "stickers": items])
